@@ -16,5 +16,6 @@ public class ApplicationDTO {
     private UUID applicantId;
     private String nationalId;
     private String status;
+    private Double amount;
     private List<UUID> documentIds;
 }

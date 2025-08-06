@@ -8,6 +8,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "decisions")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Decision {

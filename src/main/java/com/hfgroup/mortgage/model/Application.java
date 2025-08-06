@@ -3,7 +3,6 @@ package com.hfgroup.mortgage.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -34,10 +33,6 @@ public class Application {
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
-
-    // One application can have multiple documents
-    @OneToMany(mappedBy = "applicationId", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Document> documents;
 
     @PrePersist
     public void onCreate() {
