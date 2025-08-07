@@ -15,5 +15,5 @@ public class ApplicationFilterDTO {
     private LocalDateTime createdFrom;
     private LocalDateTime createdTo;
     private Integer page = 0;
-    private Integer size = 10;
+    private Integer size = 20;
 } 

@@ -15,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -62,13 +63,41 @@ public class ApplicationService {
     public Page<Application> getApplicationsWithFilters(ApplicationFilterDTO filterDTO) {
         Pageable pageable = PageRequest.of(filterDTO.getPage(), filterDTO.getSize());
         
-        return applicationRepository.findApplicationsWithFilters(
-                filterDTO.getStatus(),
-                filterDTO.getNationalId(),
-                filterDTO.getCreatedFrom(),
-                filterDTO.getCreatedTo(),
-                pageable
-        );
+        String status = filterDTO.getStatus();
+        String nationalId = filterDTO.getNationalId();
+        LocalDateTime createdFrom = filterDTO.getCreatedFrom();
+        LocalDateTime createdTo = filterDTO.getCreatedTo();
+        
+        // Determine which repository method to use based on provided filters
+        if (status != null && nationalId != null && createdFrom != null && createdTo != null) {
+            return applicationRepository.findByStatusAndNationalIdAndCreatedAtBetween(status, nationalId, createdFrom, createdTo, pageable);
+        } else if (status != null && nationalId != null) {
+            return applicationRepository.findByStatusAndNationalId(status, nationalId, pageable);
+        } else if (status != null && createdFrom != null && createdTo != null) {
+            return applicationRepository.findByStatusAndCreatedAtBetween(status, createdFrom, createdTo, pageable);
+        } else if (nationalId != null && createdFrom != null && createdTo != null) {
+            return applicationRepository.findByNationalIdAndCreatedAtBetween(nationalId, createdFrom, createdTo, pageable);
+        } else if (status != null) {
+            return applicationRepository.findByStatus(status, pageable);
+        } else if (nationalId != null) {
+            return applicationRepository.findByNationalId(nationalId, pageable);
+        } else if (createdFrom != null && createdTo != null) {
+            return applicationRepository.findByCreatedAtBetween(createdFrom, createdTo, pageable);
+        } else {
+            // No filters provided, return all applications
+            return applicationRepository.findAll(pageable);
+        }
+    }
+    
+    /**
+     * Method to get all applications without filters.
+     * @param page Page number.
+     * @param size Page size.
+     * @return Page of all applications.
+     */
+    public Page<Application> getAllApplications(Integer page, Integer size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return applicationRepository.findAll(pageable);
     }
 
     /**
