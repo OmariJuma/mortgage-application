@@ -99,4 +99,3 @@ jobs:
         uses: anchore/grype-action@v0.2.0
         with:
           image: ${{ secrets.DOCKER_USERNAME }}/mortgage-app:${{ github.sha }}
-`
