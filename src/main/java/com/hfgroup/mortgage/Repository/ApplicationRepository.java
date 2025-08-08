@@ -3,14 +3,17 @@ package com.hfgroup.mortgage.Repository;
 import com.hfgroup.mortgage.model.Application;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ApplicationRepository extends JpaRepository<Application, UUID> {
-    
+    // Find by applicant ID
+    @EntityGraph(attributePaths = "documents")
+    Optional<Application> findById(UUID id);
     // Find by status
     Page<Application> findByStatus(String status, Pageable pageable);
     

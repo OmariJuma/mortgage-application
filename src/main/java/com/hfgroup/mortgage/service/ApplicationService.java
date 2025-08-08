@@ -2,6 +2,8 @@ package com.hfgroup.mortgage.service;
 
 import com.hfgroup.mortgage.Repository.ApplicationRepository;
 import com.hfgroup.mortgage.Repository.DecisionRepository;
+import com.hfgroup.mortgage.Repository.DocumentRepository;
+import com.hfgroup.mortgage.Repository.UserRepository;
 import com.hfgroup.mortgage.dto.request.ApplicationDTO;
 import com.hfgroup.mortgage.dto.request.ApplicationFilterDTO;
 import com.hfgroup.mortgage.dto.request.DecisionDTO;
@@ -9,6 +11,8 @@ import com.hfgroup.mortgage.exception.ApplicationNotFoundException;
 import com.hfgroup.mortgage.exception.DecisionAlreadyExistsException;
 import com.hfgroup.mortgage.model.Application;
 import com.hfgroup.mortgage.model.Decision;
+import com.hfgroup.mortgage.model.Document;
+import com.hfgroup.mortgage.security.JwtTokenProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,18 +20,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class ApplicationService {
 
     private final ApplicationRepository applicationRepository;
     private final DecisionRepository decisionRepository;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
+    private final DocumentRepository documentRepository;
 
-    public ApplicationService(ApplicationRepository applicationRepository, DecisionRepository decisionRepository) {
+    public ApplicationService(ApplicationRepository applicationRepository, DecisionRepository decisionRepository, JwtTokenProvider jwtTokenProvider, UserRepository userRepository, DocumentRepository documentRepository) {
         this.applicationRepository = applicationRepository;
         this.decisionRepository = decisionRepository;
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.userRepository = userRepository;
+        this.documentRepository = documentRepository;
     }
 
     /**
@@ -36,14 +48,33 @@ public class ApplicationService {
      * @return The saved Application entity.
      */
     public Application createApplication(ApplicationDTO applicationDTO) {
-        // Convert DTO to Entity
+        // Save the application
         Application application = new Application();
         application.setApplicantId(applicationDTO.getApplicantId());
         application.setNationalId(applicationDTO.getNationalId());
+        application.setAmount(applicationDTO.getAmount());
         application.setStatus(applicationDTO.getStatus() != null ? applicationDTO.getStatus() : "PENDING");
-        application.setAmount(applicationDTO.getAmount() != null ? applicationDTO.getAmount() : 0.0);
 
-        return applicationRepository.save(application);
+        Application savedApplication = applicationRepository.save(application);
+
+        // Map and save the documents
+        if (applicationDTO.getDocuments() != null) {
+            List<Document> documents = applicationDTO.getDocuments().stream().map(documentDTO -> {
+                Document document = new Document();
+                document.setApplication(savedApplication);
+                document.setFileName(documentDTO.getFileName());
+                document.setUrl(documentDTO.getPresignedUrl());
+                document.setFileType(documentDTO.getFileType());
+                document.setSize(documentDTO.getSize());
+
+                return document;
+            }).collect(Collectors.toList());
+
+            documentRepository.saveAll(documents);
+            savedApplication.setDocuments(documents);
+        }
+
+        return savedApplication;
     }
 
     /**
@@ -104,10 +135,11 @@ public class ApplicationService {
      * Method to create a decision for an application.
      * @param applicationId The application ID.
      * @param decisionDTO The decision details.
+     * @param authorizationHeader The authorization header containing the JWT token.
      * @return The created decision.
      */
     @Transactional
-    public Decision createDecision(UUID applicationId, DecisionDTO decisionDTO) {
+    public Decision createDecision(UUID applicationId, DecisionDTO decisionDTO, String authorizationHeader) {
         // Check if application exists
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new ApplicationNotFoundException("Application not found with ID: " + applicationId));
@@ -121,11 +153,12 @@ public class ApplicationService {
         if (!"APPROVED".equals(decisionDTO.getDecision()) && !"REJECTED".equals(decisionDTO.getDecision())) {
             throw new RuntimeException("Decision must be either 'APPROVED' or 'REJECTED'");
         }
-
+        String username = jwtTokenProvider.getUsernameFromToken(authorizationHeader.replace("Bearer ", ""));
+       UUID  approverId = userRepository.findByUsername(username).get().getId();
         // Create decision
         Decision decision = Decision.builder()
                 .applicationId(applicationId)
-                .approverId(decisionDTO.getApproverId())
+                .approverId(approverId)
                 .decision(decisionDTO.getDecision())
                 .comment(decisionDTO.getComment())
                 .build();

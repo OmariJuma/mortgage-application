@@ -1,5 +1,6 @@
 package com.hfgroup.mortgage.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -9,22 +10,24 @@ import java.util.UUID;
 @Entity
 @Table(name = "documents")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Document {
-
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
-    @Column(name = "application_id", nullable = false)
-    private UUID applicationId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "application_id", nullable = false)
+    @JsonIgnore
+    private Application application;
 
     @Column(nullable = false, length = 255)
     private String fileName;
 
     @Column(nullable = false, length = 50)
-    private String fileType;
+    private String fileType ;
 
     @Column(nullable = false)
     private long size;

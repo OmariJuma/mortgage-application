@@ -3,6 +3,7 @@ package com.hfgroup.mortgage.model;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -11,13 +12,15 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 public class Application {
-
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID id;
 
     @Column(name = "applicant_id", nullable = false, updatable = false)
     private UUID applicantId;
+
+    @OneToMany(mappedBy = "application", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Document> documents;
 
     @Column(nullable = false, unique = true, length = 20)
     private String nationalId;

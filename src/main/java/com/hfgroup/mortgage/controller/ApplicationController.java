@@ -6,30 +6,57 @@ import com.hfgroup.mortgage.dto.request.DecisionDTO;
 import com.hfgroup.mortgage.model.Application;
 import com.hfgroup.mortgage.model.Decision;
 import com.hfgroup.mortgage.service.ApplicationService;
+import com.hfgroup.mortgage.service.S3Service;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URL;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/applications")
 public class ApplicationController {
     private final ApplicationService applicationService;
+    private final S3Service s3Service;
 
-    public ApplicationController(ApplicationService applicationService) {
+    public ApplicationController(ApplicationService applicationService, S3Service s3Service) {
         this.applicationService = applicationService;
+        this.s3Service = s3Service;
     }
 
     @PostMapping
     @PreAuthorize("hasRole('APPLICANT')")
     public Application createApplication(@RequestBody ApplicationDTO applicationDTO) {
+        // Loop through documents and handle S3 uploads and presigned URL generation
+        List<ApplicationDTO.DocumentMetadata> updatedMetadata = applicationDTO.getDocuments().stream().map(document -> {
+            String bucketName = "oj-mortgage-application-documents";
+            String keyName = "mortgage-applications/" + document.getFileName();
+
+            s3Service.uploadFile(bucketName, keyName, document.getFilePath());
+
+            URL presignedUrl = s3Service.generatePresignedUrl(bucketName, keyName, Duration.ofDays(7));
+
+            return ApplicationDTO.DocumentMetadata.builder()
+                    .fileName(document.getFileName())
+                    .filePath(keyName)
+                    .documentType(document.getDocumentType())
+                    .fileType(document.getFileType())
+                    .presignedUrl(presignedUrl.toString())
+                    .build();
+        }).collect(Collectors.toList());
+
+        applicationDTO.setDocuments(updatedMetadata);
         return applicationService.createApplication(applicationDTO);
     }
+
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('APPLICANT', 'OFFICER')")
@@ -110,8 +137,10 @@ public class ApplicationController {
     @PreAuthorize("hasRole('OFFICER')")
     public ResponseEntity<Decision> createDecision(
             @PathVariable UUID id,
-            @RequestBody DecisionDTO decisionDTO) {
-        Decision decision = applicationService.createDecision(id, decisionDTO);
+            @RequestBody DecisionDTO decisionDTO,
+            @RequestHeader("Authorization") String authorizationHeader
+            ) {
+        Decision decision = applicationService.createDecision(id, decisionDTO, authorizationHeader);
         return ResponseEntity.ok(decision);
     }
 }
