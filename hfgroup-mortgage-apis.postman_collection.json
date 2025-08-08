@@ -1,0 +1,249 @@
+{
+	"info": {
+		"_postman_id": "c303dd0e-9381-4471-b6c0-433f862111f0",
+		"name": "hfgroup-mortgage-apis",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "28083632"
+	},
+	"item": [
+		{
+			"name": "create application",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0dXNlcjEiLCJyb2xlcyI6IlJPTEVfT0ZGSUNFUiIsImlhdCI6MTc1NDU0MTQ2NywiZXhwIjoxNzU0NjI3ODY3fQ.EAomRGe4llt7dsNKRYRXzVlVLGrOleODAwMVsy-egn3CoyJIcmDWlH7qPerz0252wrEAoKt2wXNvLyz8u9Xv1A",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"applicantId\": \"1b099207-d0ca-4c0c-b05c-e4f948fd37e0\",\r\n  \"nationalId\": \"456755543\",\r\n  \"status\": \"PENDING\",\r\n  \"amount\": 250000.00,\r\n  \"documents\": [\r\n    {\r\n      \"fileName\": \"passport.pdf\",\r\n      \"filePath\": \"C:\\\\Users\\\\Omar\\\\Pictures\\\\41 questions ccat.png\",\r\n      \"fileType\": \"Passport\",\r\n      \"size\":5665\r\n    },\r\n    {\r\n      \"fileName\": \"national-id.jpg\",\r\n      \"filePath\": \"C:\\\\Users\\\\Omar\\\\Pictures\\\\Screenshot.png\",\r\n      \"fileType\": \"National ID\",\r\n      \"size\":5677\r\n    }\r\n  ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/api/v1/applications",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"api",
+						"v1",
+						"applications"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get applications",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8081/api/v1/applications/all",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"api",
+						"v1",
+						"applications",
+						"all"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "make a decision",
+			"request": {
+				"method": "PATCH",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"decision\":\"APPROVED\",\r\n    \"comment\":\"its ok\",\r\n    \"approverId\":\"\"\r\n\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/api/v1/applications/0b039445-a7fa-461f-9e8c-f69b2f6a122f/decision",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"api",
+						"v1",
+						"applications",
+						"0b039445-a7fa-461f-9e8c-f69b2f6a122f",
+						"decision"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "get applications using filters",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8081/api/v1/applications",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"api",
+						"v1",
+						"applications"
+					],
+					"query": [
+						{
+							"key": "createdFrom",
+							"value": "2025-08-06",
+							"disabled": true
+						},
+						{
+							"key": "createdTo",
+							"value": "2025-08-07",
+							"disabled": true
+						},
+						{
+							"key": "status",
+							"value": "COMPLETED",
+							"disabled": true
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "create a user",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"username\": \"testuser1\",\r\n    \"password\": \"password123\",\r\n    \"roles\": \"OFFICER\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/api/users/register",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"api",
+						"users",
+						"register"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "upload",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8081/upload",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"upload"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "login",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"username\": \"testuser\",\r\n    \"password\": \"password123\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:8081/api/auth/login",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8081",
+					"path": [
+						"api",
+						"auth",
+						"login"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJ0ZXN0dXNlciIsInJvbGVzIjoiUk9MRV9BUFBMSUNBTlQiLCJpYXQiOjE3NTQ2MzY2NjMsImV4cCI6MTc1NDcyMzA2M30.cCN30gcRFLhlID9bdxwVijAuaW0Ms8uipCenVBfgzGvarWyt0lxlkbHv3M1GKzpdC0Xxci1uE1uvkq6m3tSggw",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
