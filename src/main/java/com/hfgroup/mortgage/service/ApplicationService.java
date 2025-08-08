@@ -33,13 +33,25 @@ public class ApplicationService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final DocumentRepository documentRepository;
+    private final KafkaProducerService kafkaProducerService;
 
-    public ApplicationService(ApplicationRepository applicationRepository, DecisionRepository decisionRepository, JwtTokenProvider jwtTokenProvider, UserRepository userRepository, DocumentRepository documentRepository) {
+    public ApplicationService(ApplicationRepository applicationRepository, DecisionRepository decisionRepository, JwtTokenProvider jwtTokenProvider, UserRepository userRepository, DocumentRepository documentRepository, KafkaProducerService kafkaProducerService) {
         this.applicationRepository = applicationRepository;
         this.decisionRepository = decisionRepository;
         this.jwtTokenProvider = jwtTokenProvider;
         this.userRepository = userRepository;
         this.documentRepository = documentRepository;
+        this.kafkaProducerService = kafkaProducerService;
+    }
+
+    private <T> Object buildEventPayload(String eventType, T data) {
+        return new Object() {
+            public final String event = eventType;  // "CREATE", "UPDATE", "DELETE"
+            public final String traceId = UUID.randomUUID().toString();
+            public final String version = "1.0";
+            public final String timestamp = LocalDateTime.now().toString();
+            public final T payload = data;
+        };
     }
 
     /**
@@ -73,7 +85,11 @@ public class ApplicationService {
             documentRepository.saveAll(documents);
             savedApplication.setDocuments(documents);
         }
-
+        kafkaProducerService.publishMessage(
+                "loan.applications",
+                savedApplication.getId(),
+                buildEventPayload("CREATE", savedApplication)
+        );
         return savedApplication;
     }
 
@@ -83,7 +99,13 @@ public class ApplicationService {
      * @return Optional containing the application if found.
      */
     public Optional<Application> getApplicationById(UUID id) {
-        return applicationRepository.findById(id);
+        Optional<Application> application = applicationRepository.findById(id);
+        kafkaProducerService.publishMessage(
+                "loan.applications",
+                application.get().getId(),
+                buildEventPayload("UPDATE", application)
+        );
+        return application;
     }
 
     /**
@@ -98,7 +120,7 @@ public class ApplicationService {
         String nationalId = filterDTO.getNationalId();
         LocalDateTime createdFrom = filterDTO.getCreatedFrom();
         LocalDateTime createdTo = filterDTO.getCreatedTo();
-        
+
         // Determine which repository method to use based on provided filters
         if (status != null && nationalId != null && createdFrom != null && createdTo != null) {
             return applicationRepository.findByStatusAndNationalIdAndCreatedAtBetween(status, nationalId, createdFrom, createdTo, pageable);
@@ -116,6 +138,7 @@ public class ApplicationService {
             return applicationRepository.findByCreatedAtBetween(createdFrom, createdTo, pageable);
         } else {
             // No filters provided, return all applications
+
             return applicationRepository.findAll(pageable);
         }
     }
@@ -127,8 +150,8 @@ public class ApplicationService {
      * @return Page of all applications.
      */
     public Page<Application> getAllApplications(Integer page, Integer size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return applicationRepository.findAll(pageable);
+        Page<Application> applications = applicationRepository.findAll(PageRequest.of(page, size));
+        return applications;
     }
 
     /**
@@ -168,7 +191,10 @@ public class ApplicationService {
         // Update application status
         application.setStatus(decisionDTO.getDecision());
         applicationRepository.save(application);
-
-        return savedDecision;
+        kafkaProducerService.publishMessage(
+                "loan.applications",
+                savedDecision.getId(),
+                buildEventPayload("UPDATE", savedDecision)
+        );        return savedDecision;
     }
 }
