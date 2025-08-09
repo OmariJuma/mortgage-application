@@ -1,100 +1,63 @@
-name: Mortgage App CI/CD
+name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
-    
-jobs:
-  build-and-test:
-    name: Build and Test with Docker Services
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    branches: [ main ]
 
-      - name: Set up Java
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: root
+          POSTGRES_DB: mortgage
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres" 
+          --health-interval=10s 
+          --health-timeout=5s 
+          --health-retries=5
+      kafka:
+        image: confluentinc/cp-kafka:7.5.0
+        env:
+          KAFKA_BROKER_ID: 1
+          KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        ports:
+          - 9092:9092
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
+          java-version: '17'
           distribution: 'temurin'
-          java-version: '23'
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Install Docker Compose
+        run: sudo apt-get install docker-compose
 
-      - name: Start services with docker-compose
-        run: docker compose up -d --build
+      - name: Start services with Docker Compose
+        run: docker-compose up -d
+        working-directory: ./backend
 
-      - name: Wait for PostgreSQL to be ready
+      - name: Wait for Postgres to be ready
         run: |
           until docker exec postgres-mortgage pg_isready -U postgres; do
-            echo "Waiting for postgres..."
-            sleep 2
+            echo "Waiting for Postgres..."
+            sleep 3
           done
 
-      - name: Maven Build (skip checkstyle, ignore test failures)
-        run: mvn clean package -Dcheckstyle.skip=true -Dmaven.test.failure.ignore=true
-
-      - name: Run Maven Tests with Coverage (Ignore if none)
-        run: mvn test jacoco:report || echo "No tests found or test step failed, continuing..."
-
-      - name: Upload Coverage Report (if exists)
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: target/site/jacoco/index.html
-        continue-on-error: true
-
-      - name: Upload Test Results (if exists)
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: target/surefire-reports
-        continue-on-error: true
-
-  docker-build:
-    name: Docker Build & Push
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to DockerHub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-
-      - name: Build and Tag the Docker Image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/mortgage-app:${{ github.sha }} \
-                       -t ${{ secrets.DOCKER_USERNAME }}/mortgage-app:latest .
-
-      - name: Push Docker Image
-        run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/mortgage-app:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/mortgage-app:latest
-
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    needs: docker-build
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Trivy Security Scan
-        uses: aquasecurity/trivy-action@v0.11.0
-        with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/mortgage-app:${{ github.sha }}
-          format: table
-
-      - name: Grype Security Scan
-        uses: anchore/grype-action@v0.2.0
-        with:
-          image: ${{ secrets.DOCKER_USERNAME }}/mortgage-app:${{ github.sha }}
+      - name: Build & test app
+        run: mvn clean install
+        working-directory: ./backend
