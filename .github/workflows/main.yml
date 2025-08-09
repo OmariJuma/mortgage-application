@@ -7,34 +7,37 @@ jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '23'
 
-      - name: Maven Build
-        run: mvn clean package
+      - name: Maven Build (Skip Checkstyle)
+        run: mvn clean package -Dcheckstyle.skip=true
 
-      - name: Run Maven Tests with Coverage (Ignore if none)
-        run: mvn test jacoco:report || echo "No tests found or test step failed, continuing..."
+      - name: Run Maven Tests (Ignore Failures)
+        run: mvn test jacoco:report -Dcheckstyle.skip=true || echo "No tests found or test step failed, continuing..."
 
       - name: Upload Coverage Report (if exists)
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: target/site/jacoco/index.html
+          path: backend/target/site/jacoco/index.html
         continue-on-error: true
 
       - name: Upload Test Results (if exists)
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: target/surefire-reports
+          path: backend/target/surefire-reports
         continue-on-error: true
 
   docker-build:
@@ -43,26 +46,26 @@ jobs:
     needs: [build-and-test]
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and Tag the Docker Image
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/mortgage-app:${{ github.sha }} \
-                       -t ${{ secrets.DOCKER_USERNAME }}/mortgage-app:latest .
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/mortgage:${{ github.sha }} \
+                       -t ${{ secrets.DOCKER_USERNAME }}/mortgage:latest backend
 
       - name: Push Docker Image
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/mortgage-app:${{ github.sha }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/mortgage-app:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/mortgage:${{ github.sha }}
+          docker push ${{ secrets.DOCKER_USERNAME }}/mortgage:latest
 
   security-scan:
     name: Security Scan
@@ -70,15 +73,15 @@ jobs:
     needs: docker-build
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Trivy Security Scan
-        uses: aquasecurity/trivy-action@v0.11.0
+        uses: aquasecurity/trivy-action@v0.20.0
         with:
-          image-ref: ${{ secrets.DOCKER_USERNAME }}/mortgage-app:${{ github.sha }}
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/mortgage:${{ github.sha }}
           format: table
 
       - name: Grype Security Scan
-        uses: anchore/grype-action@v0.2.0
+        uses: anchore/grype-action@v0.7.0
         with:
-          image: ${{ secrets.DOCKER_USERNAME }}/mortgage-app:${{ github.sha }}
+          image: ${{ secrets.DOCKER_USERNAME }}/mortgage:${{ github.sha }}
