@@ -5,10 +5,10 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
+    
 jobs:
   build-and-test:
-    name: Build & Test with Docker Services
+    name: Build and Test with Docker Services
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
